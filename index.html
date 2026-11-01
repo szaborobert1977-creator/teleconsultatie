@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Teleconsultație</title>
+<style>
+:root{--bg:#ffffff;--card:#faf8f1;--khaki:#a89968;--khaki-d:#6f6540;--line:#e4dec9;--txt:#2e2a1a;--mut:#7c7556;--vid:#d9d2b8;--on:#fff;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1f1d14;--card:#2a271b;--khaki:#b5a672;--khaki-d:#d3c895;--line:#413c28;--txt:#f3efe0;--mut:#b3aa86;--vid:#12110b;--on:#1f1d14;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:3px solid var(--khaki);background:var(--card)}
+.logo{width:36px;height:36px;border-radius:10px;background:var(--khaki);display:grid;place-items:center}
+h1{font-size:18px;margin:0}header small{color:var(--mut);display:block}
+main{max-width:980px;margin:0 auto;padding:20px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:24px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;text-decoration:none;color:inherit;display:block}
+.card:hover{border-color:var(--khaki)}.card h2{margin:8px 0 6px;font-size:20px}.card p{margin:0;color:var(--mut)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.code{font-size:32px;letter-spacing:6px;font-weight:700;color:var(--khaki-d)}
+.lbl{color:var(--mut);font-size:13px}
+input{font:inherit;font-size:20px;letter-spacing:4px;text-transform:uppercase;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--txt);width:190px}
+button{font:inherit;cursor:pointer;border:1px solid var(--khaki);background:var(--khaki);color:var(--on);padding:10px 18px;border-radius:10px;font-weight:600}
+button.o{background:transparent;color:var(--khaki-d)}button.red{background:#a8473a;border-color:#a8473a;color:#fff}
+button:disabled{opacity:.5;cursor:default}
+.stage{position:relative;background:var(--vid);border-radius:18px;overflow:hidden;aspect-ratio:16/9;border:1px solid var(--line)}
+#rem{width:100%;height:100%;object-fit:cover}
+#loc{position:absolute;right:12px;bottom:12px;width:26%;max-width:220px;aspect-ratio:4/3;object-fit:cover;border-radius:12px;border:3px solid var(--bg);background:#000;transform:scaleX(-1)}
+#ph{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--mut);padding:20px}
+.bar{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+#st{color:var(--mut);margin:0 0 12px}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M8 2h4v6h6v4h-6v6H8v-6H2V8h6z" fill="#fff"/></svg></div>
+  <div><h1>Teleconsultație</h1><small id="who">Videoconsultație medic – pacient</small></div>
+</header>
+<main>
+  <section id="home" class="hide">
+    <p>Alege rolul tău. Medicul pornește consultația și primește un cod scurt; pacientul intră cu acel cod.</p>
+    <div class="cards">
+      <a class="card" href="#doctor"><h2>Sunt medic</h2><p>Pornește o consultație și trimite codul pacientului.</p></a>
+      <a class="card" href="#pacient"><h2>Sunt pacient</h2><p>Intră în consultație folosind codul primit.</p></a>
+    </div>
+  </section>
+
+  <section id="call" class="hide">
+    <div id="pDoc" class="panel hide">
+      <button id="start">Începe consultația</button>
+      <div id="codeBox" class="hide"><div class="lbl">Cod consultație</div><div class="code" id="code"></div></div>
+      <button id="cp" class="o hide">Copiază invitația</button>
+    </div>
+    <div id="pPac" class="panel hide">
+      <input id="inp" maxlength="6" placeholder="COD" autocomplete="off">
+      <button id="join">Intră în consultație</button>
+    </div>
+    <p id="st"></p>
+    <div class="stage">
+      <video id="rem" autoplay playsinline></video>
+      <div id="ph"><div><strong>Se așteaptă celălalt participant…</strong></div></div>
+      <video id="loc" autoplay playsinline muted></video>
+    </div>
+    <div class="bar">
+      <button id="mic" class="o" disabled>Microfon: pornit</button>
+      <button id="cam" class="o" disabled>Cameră: pornită</button>
+      <button id="end" class="red" disabled>Închide apelul</button>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+const PREFIX='teleconsult-ro-'; // schimbă cu un text unic al clinicii tale
+const ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // fără litere/cifre care se confundă
+const $=s=>document.querySelector(s);
+const role=location.hash.replace('#','');
+addEventListener('hashchange',()=>location.reload());
+let peer=null,stream=null,call=null;
+const st=t=>$('#st').textContent=t;
+const newCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(6)),b=>ALPHA[b%ALPHA.length]).join('');
+
+if(role==='doctor'||role==='pacient'){
+  $('#call').classList.remove('hide');
+  $(role==='doctor'?'#pDoc':'#pPac').classList.remove('hide');
+  $('#who').textContent=role==='doctor'?'Spațiul medicului':'Spațiul pacientului';
+  st(role==='doctor'?'Apasă „Începe consultația”. Browserul va cere acces la cameră și microfon.':'Introdu codul primit de la medic.');
+  const pre=new URLSearchParams(location.search).get('cod');
+  if(pre)$('#inp').value=pre.toUpperCase().slice(0,6);
+}else $('#home').classList.remove('hide');
+if(typeof Peer==='undefined')st('Nu s-a putut încărca serviciul de conectare. Verifică internetul și reîncarcă pagina.');
+
+async function media(){
+  if(stream)return;
+  try{stream=await navigator.mediaDevices.getUserMedia({video:true,audio:true})}
+  catch(e){st('Nu pot accesa camera/microfonul. Permite accesul în browser (și folosește HTTPS).');throw e}
+  $('#loc').srcObject=stream;
+  ['mic','cam','end'].forEach(i=>$('#'+i).disabled=false);
+}
+function attach(c){
+  call=c;
+  c.on('stream',s=>{$('#rem').srcObject=s;$('#ph').classList.add('hide');st('Conectat – consultația este în desfășurare.')});
+  c.on('close',()=>{$('#rem').srcObject=null;$('#ph').classList.remove('hide');call=null;
+    st(role==='doctor'?'Pacientul a ieșit. Poți aștepta un nou apel cu același cod.':'Apelul s-a încheiat.')});
+  c.on('error',()=>st('Eroare în apel. Reîncearcă.'));
+}
+
+async function startDoctor(){
+  $('#start').disabled=true;
+  try{await media()}catch(e){$('#start').disabled=false;return}
+  const code=newCode();
+  peer=new Peer(PREFIX+code);
+  peer.on('open',()=>{
+    $('#code').textContent=code;
+    $('#codeBox').classList.remove('hide');$('#cp').classList.remove('hide');$('#start').classList.add('hide');
+    const link=location.href.split('#')[0].split('?')[0]+'?cod='+code+'#pacient';
+    const txt='Consultație online: '+link+' (cod: '+code+')';
+    $('#cp').onclick=async()=>{try{await navigator.clipboard.writeText(txt);$('#cp').textContent='Copiat ✓'}catch(e){prompt('Copiază invitația:',txt)}};
+    st('Consultația este pornită. Se așteaptă pacientul…');
+  });
+  peer.on('call',c=>{
+    if(call){c.close();return}
+    c.answer(stream);attach(c);
+  });
+  peer.on('error',e=>{
+    if(e.type==='unavailable-id'){peer.destroy();startDoctor()}
+    else{st('Eroare de conectare ('+e.type+'). Reîncarcă pagina.');$('#start').disabled=false}
+  });
+}
+async function joinPatient(){
+  const code=$('#inp').value.trim().toUpperCase();
+  if(code.length!==6){st('Introdu codul din 6 caractere primit de la medic.');return}
+  $('#join').disabled=true;
+  try{await media()}catch(e){$('#join').disabled=false;return}
+  st('Se conectează la medic…');
+  peer=new Peer();
+  peer.on('open',()=>{attach(peer.call(PREFIX+code,stream))});
+  peer.on('error',e=>{
+    st(e.type==='peer-unavailable'?'Codul nu este valid sau medicul nu a pornit încă consultația.':'Eroare de conectare ('+e.type+').');
+    $('#join').disabled=false;
+  });
+}
+$('#start').onclick=startDoctor;
+$('#join').onclick=joinPatient;
+$('#inp').addEventListener('keydown',e=>{if(e.key==='Enter')joinPatient()});
+$('#mic').onclick=()=>{const t=stream.getAudioTracks()[0];t.enabled=!t.enabled;$('#mic').textContent='Microfon: '+(t.enabled?'pornit':'oprit')};
+$('#cam').onclick=()=>{const t=stream.getVideoTracks()[0];t.enabled=!t.enabled;$('#cam').textContent='Cameră: '+(t.enabled?'pornită':'oprită')};
+$('#end').onclick=()=>{
+  if(call)call.close();
+  if(peer)peer.destroy();
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  location.hash='';location.search='';location.reload();
+};
+</script>
+</body>
+</html>

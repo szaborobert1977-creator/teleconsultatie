@@ -30,6 +30,11 @@ button:disabled{opacity:.5;cursor:default}
 .bar{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
 #st{color:var(--mut);margin:0 0 12px}
 .hide{display:none!important}
+.col{flex-direction:column;align-items:stretch}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.prog{height:8px;background:var(--line);border-radius:6px;overflow:hidden;width:100%}.prog i{display:block;height:100%;width:0;background:var(--khaki);transition:width .2s}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;max-height:360px;overflow:auto;width:100%}
+.grid img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block}
+.grid:empty{display:none}
 </style>
 </head>
 <body>
@@ -67,10 +72,26 @@ button:disabled{opacity:.5;cursor:default}
       <button id="cam" class="o" disabled>Cameră: pornită</button>
       <button id="end" class="red" disabled>Închide apelul</button>
     </div>
+    <div id="sendBox" class="panel col hide" style="margin-top:16px">
+      <div class="row">
+        <input id="files" type="file" accept="image/*" multiple hidden>
+        <button id="pick" disabled>Transmite imagini la medic</button>
+        <label class="lbl"><input type="checkbox" id="rs" checked style="width:auto;letter-spacing:0;text-transform:none"> Micșorează imaginile (mai rapid, recomandat)</label>
+      </div>
+      <div id="sp" class="lbl"></div>
+      <div id="pg" class="prog hide"><i></i></div>
+    </div>
+    <div id="recvBox" class="panel col hide" style="margin-top:16px">
+      <div class="row"><strong id="rc">Imagini primite: 0 / 1000</strong><button id="dlAll" class="o" disabled>Descarcă toate (ZIP)</button></div>
+      <div id="zp" class="prog hide"><i></i></div>
+      <div class="lbl">Apasă pe o imagine ca să o descarci individual.</div>
+      <div id="grid" class="grid"></div>
+    </div>
   </section>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script>
 const PREFIX='teleconsult-ro-'; // schimbă cu un text unic al clinicii tale
 const ALPHA='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // fără litere/cifre care se confundă
@@ -119,6 +140,7 @@ async function startDoctor(){
     $('#cp').onclick=async()=>{try{await navigator.clipboard.writeText(txt);$('#cp').textContent='Copiat ✓'}catch(e){prompt('Copiază invitația:',txt)}};
     st('Consultația este pornită. Se așteaptă pacientul…');
   });
+  peer.on('connection',onData);
   peer.on('call',c=>{
     if(call){c.close();return}
     c.answer(stream);attach(c);
@@ -135,12 +157,92 @@ async function joinPatient(){
   try{await media()}catch(e){$('#join').disabled=false;return}
   st('Se conectează la medic…');
   peer=new Peer();
-  peer.on('open',()=>{attach(peer.call(PREFIX+code,stream))});
+  peer.on('open',()=>{attach(peer.call(PREFIX+code,stream));openData(peer.connect(PREFIX+code,{reliable:true}))});
   peer.on('error',e=>{
     st(e.type==='peer-unavailable'?'Codul nu este valid sau medicul nu a pornit încă consultația.':'Eroare de conectare ('+e.type+').');
     $('#join').disabled=false;
   });
 }
+
+// ===== Transfer imagini (maxim 1000) =====
+const MAX=1000;
+let conn=null,sent=0,done=0,inflight=0,ackWait=null,aborted=false,upd=()=>{};
+const recv=[];
+if(role==='pacient')$('#sendBox').classList.remove('hide');
+if(role==='doctor')$('#recvBox').classList.remove('hide');
+const setProg=(el,p)=>{el.classList.remove('hide');el.firstElementChild.style.width=Math.round(p*100)+'%'};
+const fmt=n=>n>1048576?(n/1048576).toFixed(1)+' MB':Math.round(n/1024)+' KB';
+function wake(){if(ackWait){const r=ackWait;ackWait=null;r()}}
+function openData(c){
+  conn=c;
+  c.on('open',()=>{$('#pick').disabled=false;$('#sp').textContent='Poți transmite până la '+MAX+' imagini.'});
+  c.on('data',d=>{if(d&&d.ok!==undefined){inflight--;done++;upd();wake()}});
+  c.on('close',()=>{aborted=true;$('#pick').disabled=true;wake()});
+}
+async function shrink(f){
+  const bm=await createImageBitmap(f);
+  const k=Math.min(1,1600/Math.max(bm.width,bm.height));
+  const c=document.createElement('canvas');c.width=Math.round(bm.width*k);c.height=Math.round(bm.height*k);
+  c.getContext('2d').drawImage(bm,0,0,c.width,c.height);
+  if(bm.close)bm.close();
+  return await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(),'image/jpeg',0.85));
+}
+$('#pick').onclick=()=>$('#files').click();
+$('#files').onchange=async e=>{
+  let fl=[...e.target.files].filter(f=>f.type.startsWith('image/'));
+  e.target.value='';
+  if(!fl.length||!conn)return;
+  const room=MAX-sent;
+  if(room<=0){$('#sp').textContent='Ai atins limita de '+MAX+' imagini.';return}
+  if(fl.length>room){fl=fl.slice(0,room);$('#sp').textContent='Limita este '+MAX+' imagini. Se trimit doar primele '+room+'.'}
+  $('#pick').disabled=true;done=0;inflight=0;aborted=false;
+  const batch=fl.length;
+  upd=()=>{$('#sp').textContent='Livrate '+done+' / '+batch+(done===batch?' ✓ (mai poți trimite '+(MAX-sent)+')':'');setProg($('#pg'),done/batch)};
+  upd();
+  for(const f of fl){
+    while(inflight>=3&&!aborted)await new Promise(r=>ackWait=r);
+    if(aborted)break;
+    let blob=f,name=f.name;
+    if($('#rs').checked){try{blob=await shrink(f);name=f.name.replace(/\.[^.]+$/,'')+'.jpg'}catch(x){blob=f}}
+    const buf=await blob.arrayBuffer();
+    inflight++;sent++;
+    conn.send({name:String(sent).padStart(3,'0')+'_'+name,type:blob.type,data:buf});
+  }
+  while(inflight>0&&!aborted)await new Promise(r=>ackWait=r);
+  if(aborted)$('#sp').textContent='Conexiunea s-a întrerupt. Imaginile netrimise nu au ajuns.';
+  $('#pick').disabled=aborted;
+};
+function onData(c){
+  c.on('data',d=>{
+    if(!d||!d.data||recv.length>=MAX)return;
+    const blob=new Blob([d.data],{type:d.type||'image/jpeg'});
+    const url=URL.createObjectURL(blob);
+    recv.push({name:d.name,blob});
+    const a=document.createElement('a');a.href=url;a.download=d.name;a.title=d.name+' ('+fmt(blob.size)+')';
+    const im=document.createElement('img');im.src=url;im.loading='lazy';a.appendChild(im);$('#grid').appendChild(a);
+    $('#rc').textContent='Imagini primite: '+recv.length+' / '+MAX;
+    $('#dlAll').disabled=false;
+    try{c.send({ok:recv.length})}catch(e){}
+  });
+}
+$('#dlAll').onclick=async()=>{
+  if(typeof JSZip==='undefined'){alert('Biblioteca ZIP nu s-a încărcat. Reîncarcă pagina.');return}
+  $('#dlAll').disabled=true;
+  const PART=500,parts=Math.ceil(recv.length/PART);
+  for(let p=0;p<parts;p++){
+    const z=new JSZip();
+    recv.slice(p*PART,(p+1)*PART).forEach(r=>z.file(r.name,r.blob));
+    $('#rc').textContent='Se creează arhiva '+(p+1)+' din '+parts+'…';
+    const b=await z.generateAsync({type:'blob',compression:'STORE'},m=>setProg($('#zp'),m.percent/100));
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);
+    a.download=parts>1?'imagini-pacient-'+(p+1)+'-din-'+parts+'.zip':'imagini-pacient.zip';
+    document.body.appendChild(a);a.click();a.remove();
+    await new Promise(r=>setTimeout(r,1500));
+    URL.revokeObjectURL(a.href);
+  }
+  $('#zp').classList.add('hide');$('#dlAll').disabled=false;
+  $('#rc').textContent='Imagini primite: '+recv.length+' / '+MAX;
+};
 $('#start').onclick=startDoctor;
 $('#join').onclick=joinPatient;
 $('#inp').addEventListener('keydown',e=>{if(e.key==='Enter')joinPatient()});

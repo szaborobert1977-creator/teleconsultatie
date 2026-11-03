@@ -85,7 +85,7 @@ input,textarea{font:inherit;width:100%;padding:10px;border:1px solid var(--line)
 // ===== SETĂRI =====
 const CFG={
   doctorEmail:'szaborobert1977@gmail.com',
-  scriptUrl:'',          // adresa Google Apps Script (vezi instrucțiunile) – recomandat
+  scriptUrl:'https://script.google.com/macros/s/AKfycbxQIS707Q2lZyqE6HfSb1bYqJxXEnrr2HBYtBEnn5tQNpsuIp1gjWni6B1iFhqvY7ou/exec',          // adresa Google Apps Script (vezi instrucțiunile) – recomandat
   startHour:9, endHour:17, stepMin:30,
   workDays:[1,2,3,4,5],  // 1 = luni ... 5 = vineri
   monthsAhead:2
@@ -187,8 +187,16 @@ $('#send').onclick=async()=>{
     let t='Programarea nu a putut fi trimisă. Verifică internetul și încearcă din nou.';
     if(location.protocol==='file:')t='Pagina trebuie deschisă de pe site-ul publicat (https://…), nu direct din fișier.';
     else if(/activat/i.test(m))t='Serviciul de e-mail nu este încă activat. Medicul trebuie să deschidă e-mailul de activare primit de la FormSubmit (verifică și Spam), să apese „Activate Form”, apoi încearcă din nou.';
-    else if(m&&m!=='send'&&m!=='Failed to fetch')t='Programarea nu a putut fi trimisă ('+m+').';
-    show(t,false)}
+    else if(/fetch|network|load failed/i.test(m))t='Conexiunea către serviciul de e-mail este blocată (rețea, browser sau extensie de blocare reclame). Poți trimite programarea prin aplicația ta de e-mail, cu butonul de mai jos.';
+    else if(m&&m!=='send')t='Programarea nu a putut fi trimisă ('+m+').';
+    show(t,false);
+    const body='Programare: '+p.eticheta+'\nNume: '+p.nume+'\nTelefon: '+p.telefon+'\nE-mail: '+(p.email||'-')+'\nMotiv: '+(p.motiv||'-');
+    const a=document.createElement('a');
+    a.href='mailto:'+CFG.doctorEmail+'?subject='+encodeURIComponent('Programare nouă – '+p.eticheta)+'&body='+encodeURIComponent(body);
+    a.textContent='Trimite prin aplicația de e-mail';
+    a.style.cssText='display:inline-block;margin-top:10px;font-weight:600;color:inherit';
+    $('#msg').appendChild(document.createElement('br'));$('#msg').appendChild(a);
+  }
   $('#send').disabled=false;
 };
 

@@ -85,7 +85,7 @@ input,textarea{font:inherit;width:100%;padding:10px;border:1px solid var(--line)
 // ===== SETĂRI =====
 const CFG={
   doctorEmail:'szaborobert1977@gmail.com',
-  scriptUrl:'https://script.google.com/macros/s/AKfycbyiAjxYc9-pC8jDjBAJNHQkVGCOWfsfRIJDAv678-mjotq6Vfuwi_R7-XhUa2oL3dEdhA/exec',          // adresa Google Apps Script (vezi instrucțiunile) – recomandat
+  scriptUrl:'',          // adresa Google Apps Script (vezi instrucțiunile) – recomandat
   startHour:9, endHour:17, stepMin:30,
   workDays:[1,2,3,4,5],  // 1 = luni ... 5 = vineri
   monthsAhead:2
@@ -175,14 +175,20 @@ $('#send').onclick=async()=>{
       const r=await fetch('https://formsubmit.co/ajax/'+CFG.doctorEmail,{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},
         body:JSON.stringify({_subject:'Programare nouă – '+p.eticheta,_template:'table',Programare:p.eticheta,Nume:p.nume,Telefon:p.telefon,Email:p.email||'-',Motiv:p.motiv||'-'})});
       const j=await r.json();
-      if(!(j.success===true||j.success==='true'))throw new Error('send');
+      if(!(j.success===true||j.success==='true'))throw new Error(j.message||'send');
     }
     booked.add(key(selDay,selTime));saveLocal();
     $('#form').classList.add('hide');
     const done=labelOf(selDay,selTime);selTime=null;renderCal();renderSlots();
     show('Programarea ta pentru '+done+' a fost trimisă medicului. Vei fi contactat pentru confirmare.',true);
     $('#nm').value=$('#tl').value=$('#em').value=$('#mt2').value='';
-  }catch(e){show('Programarea nu a putut fi trimisă. Verifică internetul și încearcă din nou.',false)}
+  }catch(e){
+    const m=String(e&&e.message||'');
+    let t='Programarea nu a putut fi trimisă. Verifică internetul și încearcă din nou.';
+    if(location.protocol==='file:')t='Pagina trebuie deschisă de pe site-ul publicat (https://…), nu direct din fișier.';
+    else if(/activat/i.test(m))t='Serviciul de e-mail nu este încă activat. Medicul trebuie să deschidă e-mailul de activare primit de la FormSubmit (verifică și Spam), să apese „Activate Form”, apoi încearcă din nou.';
+    else if(m&&m!=='send'&&m!=='Failed to fetch')t='Programarea nu a putut fi trimisă ('+m+').';
+    show(t,false)}
   $('#send').disabled=false;
 };
 

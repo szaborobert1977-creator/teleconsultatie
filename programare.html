@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Programare consultație</title>
+<style>
+:root{--bg:#ffffff;--card:#f5f6ee;--khaki:#4b5320;--khaki-d:#3a4219;--line:#d6d9c0;--txt:#232814;--mut:#666c49;--on:#fff;
+--okbg:#dfeccb;--okbd:#5f8a2b;--oktx:#2f4a12;--nobg:#f6d5d0;--nobd:#b3422f;--notx:#8a2a1b;--off:#eceee3;--offtx:#9a9f84;
+color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1a1d11;--card:#242916;--khaki:#7d8a4a;--khaki-d:#b9c486;--line:#3a4026;--txt:#eef0e0;--mut:#a9b08a;--on:#1a1d11;--okbg:#2c4217;--okbd:#7fb347;--oktx:#d4efb4;--nobg:#4a201a;--nobd:#d9604a;--notx:#f5b8ad;--off:#23261a;--offtx:#6f7459;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh}
+header{display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:3px solid var(--khaki);background:var(--card)}
+.logo{width:36px;height:36px;border-radius:10px;background:var(--khaki);display:grid;place-items:center}
+h1{font-size:18px;margin:0}header small{color:var(--mut);display:block}
+.back{margin-left:auto;color:var(--khaki-d);text-decoration:none;font-weight:600;border:1px solid var(--khaki);padding:8px 14px;border-radius:10px}
+main{max-width:980px;margin:0 auto;padding:20px;display:grid;grid-template-columns:1.2fr 1fr;gap:20px}
+@media(max-width:760px){main{grid-template-columns:1fr}}
+.box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+h2{font-size:16px;margin:0 0 12px;color:var(--khaki-d)}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.nav b{font-size:17px}
+button{font:inherit;cursor:pointer;border:1px solid var(--khaki);background:var(--khaki);color:var(--on);padding:9px 16px;border-radius:10px;font-weight:600}
+button.o{background:transparent;color:var(--khaki-d)}button:disabled{opacity:.45;cursor:default}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.dn{text-align:center;font-size:12px;color:var(--mut);font-weight:600;padding:4px 0}
+.d{aspect-ratio:1;border-radius:10px;border:1px solid;display:grid;place-items:center;font-weight:600;padding:0;min-height:38px}
+.d.ok{background:var(--okbg);border-color:var(--okbd);color:var(--oktx)}
+.d.no{background:var(--nobg);border-color:var(--nobd);color:var(--notx)}
+.d.off{background:var(--off);border-color:var(--line);color:var(--offtx);cursor:default}
+.d.sel{outline:3px solid var(--khaki);outline-offset:1px}
+.e{visibility:hidden}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:13px;color:var(--mut)}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;border:1px solid;vertical-align:-1px}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:8px}
+.s{padding:9px 0;border-radius:10px;border:1px solid}
+.s.ok{background:var(--okbg);border-color:var(--okbd);color:var(--oktx)}
+.s.no{background:var(--nobg);border-color:var(--nobd);color:var(--notx);text-decoration:line-through;cursor:not-allowed}
+.s.sel{background:var(--khaki);border-color:var(--khaki);color:var(--on)}
+label{display:block;font-size:13px;font-weight:600;color:var(--khaki-d);margin:10px 0 4px}
+input,textarea{font:inherit;width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--txt)}
+.msg{margin-top:12px;padding:10px 12px;border-radius:10px;font-size:14px}
+.msg.good{background:var(--okbg);color:var(--oktx);border:1px solid var(--okbd)}
+.msg.bad{background:var(--nobg);color:var(--notx);border:1px solid var(--nobd)}
+.sum{font-weight:600;margin:0 0 4px}
+.hide{display:none!important}
+.hint{color:var(--mut);font-size:14px;margin:0}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M8 2h4v6h6v4h-6v6H8v-6H2V8h6z" fill="#fff"/></svg></div>
+  <div><h1>Programare consultație</h1><small>Alege ziua și ora dorită</small></div>
+  <a class="back" href="index.html">← Teleconsultație</a>
+</header>
+<main>
+  <section class="box">
+    <div class="nav"><button id="prev" class="o">‹</button><b id="mt"></b><button id="next" class="o">›</button></div>
+    <div class="cal" id="cal"></div>
+    <div class="legend">
+      <span><i style="background:var(--okbg);border-color:var(--okbd)"></i>Liber</span>
+      <span><i style="background:var(--nobg);border-color:var(--nobd)"></i>Ocupat</span>
+      <span><i style="background:var(--off);border-color:var(--line)"></i>Indisponibil</span>
+    </div>
+  </section>
+
+  <section class="box">
+    <h2 id="sh">Alege o zi din calendar</h2>
+    <p class="hint" id="shint">Zilele verzi au intervale libere, cele roșii sunt complet ocupate.</p>
+    <div class="slots" id="slots"></div>
+    <div id="form" class="hide">
+      <p class="sum" id="sum"></p>
+      <label for="nm">Nume și prenume *</label><input id="nm" autocomplete="name">
+      <label for="tl">Telefon *</label><input id="tl" type="tel" autocomplete="tel">
+      <label for="em">E-mail (pentru confirmare)</label><input id="em" type="email" autocomplete="email">
+      <label for="mt2">Motivul consultației</label><textarea id="mt2" rows="3"></textarea>
+      <div style="margin-top:14px"><button id="send">Trimite programarea</button></div>
+    </div>
+    <div id="msg" class="msg hide"></div>
+  </section>
+</main>
+
+<script>
+// ===== SETĂRI =====
+const CFG={
+  doctorEmail:'szaborobert1977@gmail.com',
+  scriptUrl:'https://script.google.com/macros/s/AKfycbyiAjxYc9-pC8jDjBAJNHQkVGCOWfsfRIJDAv678-mjotq6Vfuwi_R7-XhUa2oL3dEdhA/exec',          // adresa Google Apps Script (vezi instrucțiunile) – recomandat
+  startHour:9, endHour:17, stepMin:30,
+  workDays:[1,2,3,4,5],  // 1 = luni ... 5 = vineri
+  monthsAhead:2
+};
+const LUNI=['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'];
+const ZILE=['duminică','luni','marți','miercuri','joi','vineri','sâmbătă'];
+const $=s=>document.querySelector(s);
+const p2=n=>String(n).padStart(2,'0');
+const key=(d,t)=>d+' '+t;
+const dstr=(y,m,d)=>y+'-'+p2(m+1)+'-'+p2(d);
+let now=new Date(),view={y:now.getFullYear(),m:now.getMonth()},selDay=null,selTime=null,booked=new Set();
+
+function slotsOf(){const a=[];for(let t=CFG.startHour*60;t<CFG.endHour*60;t+=CFG.stepMin)a.push(p2(Math.floor(t/60))+':'+p2(t%60));return a}
+const SLOTS=slotsOf();
+function isPast(ds,t){const [y,m,d]=ds.split('-').map(Number),[h,mi]=t.split(':').map(Number);return new Date(y,m-1,d,h,mi)<=new Date()}
+function dayInfo(y,m,d){
+  const dt=new Date(y,m,d),ds=dstr(y,m,d);
+  if(!CFG.workDays.includes(dt.getDay()))return'off';
+  const free=SLOTS.filter(t=>!isPast(ds,t)&&!booked.has(key(ds,t))).length;
+  const anyFuture=SLOTS.some(t=>!isPast(ds,t));
+  if(!anyFuture)return'off';
+  return free?'ok':'no';
+}
+async function loadBooked(){
+  booked=new Set();
+  try{
+    if(CFG.scriptUrl){const r=await fetch(CFG.scriptUrl+'?t='+Date.now());const j=await r.json();(j.booked||[]).forEach(x=>booked.add(x))}
+    else{JSON.parse(localStorage.getItem('booked')||'[]').forEach(x=>booked.add(x))}
+  }catch(e){}
+}
+function saveLocal(){try{localStorage.setItem('booked',JSON.stringify([...booked]))}catch(e){}}
+
+function renderCal(){
+  const {y,m}=view;
+  $('#mt').textContent=LUNI[m]+' '+y;
+  const first=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate();
+  let h=['L','Ma','Mi','J','V','S','D'].map(x=>'<div class="dn">'+x+'</div>').join('');
+  for(let i=0;i<first;i++)h+='<div class="e"></div>';
+  for(let d=1;d<=days;d++){
+    const k=dayInfo(y,m,d),ds=dstr(y,m,d);
+    h+='<button class="d '+k+(ds===selDay?' sel':'')+'" data-d="'+ds+'"'+(k==='off'?' disabled':'')+'>'+d+'</button>';
+  }
+  $('#cal').innerHTML=h;
+  $('#cal').querySelectorAll('.d:not(.off)').forEach(b=>b.onclick=()=>{selDay=b.dataset.d;selTime=null;renderCal();renderSlots()});
+  const cur=new Date().getFullYear()*12+new Date().getMonth();
+  $('#prev').disabled=y*12+m<=cur;
+  $('#next').disabled=y*12+m>=cur+CFG.monthsAhead;
+}
+function labelOf(ds,t){const [y,m,d]=ds.split('-').map(Number);const dt=new Date(y,m-1,d);return ZILE[dt.getDay()]+', '+d+' '+LUNI[m-1].toLowerCase()+' '+y+', ora '+t}
+function renderSlots(){
+  $('#msg').classList.add('hide');
+  if(!selDay){$('#sh').textContent='Alege o zi din calendar';$('#slots').innerHTML='';$('#form').classList.add('hide');$('#shint').classList.remove('hide');return}
+  $('#shint').classList.add('hide');
+  const [y,m,d]=selDay.split('-').map(Number);
+  $('#sh').textContent=ZILE[new Date(y,m-1,d).getDay()][0].toUpperCase()+ZILE[new Date(y,m-1,d).getDay()].slice(1)+', '+d+' '+LUNI[m-1].toLowerCase();
+  $('#slots').innerHTML=SLOTS.map(t=>{
+    const taken=booked.has(key(selDay,t))||isPast(selDay,t);
+    const cls=taken?'no':(t===selTime?'ok sel':'ok');
+    return '<button class="s '+cls+'" data-t="'+t+'"'+(taken?' disabled':'')+'>'+t+'</button>';
+  }).join('');
+  $('#slots').querySelectorAll('.s.ok').forEach(b=>b.onclick=()=>{selTime=b.dataset.t;renderSlots()});
+  if(selTime){$('#form').classList.remove('hide');$('#sum').textContent='Programare: '+labelOf(selDay,selTime)}
+  else $('#form').classList.add('hide');
+}
+function show(t,ok){const e=$('#msg');e.className='msg '+(ok?'good':'bad');e.textContent=t}
+
+$('#prev').onclick=()=>{view.m--;if(view.m<0){view.m=11;view.y--}renderCal()};
+$('#next').onclick=()=>{view.m++;if(view.m>11){view.m=0;view.y++}renderCal()};
+
+$('#send').onclick=async()=>{
+  const nume=$('#nm').value.trim(),tel=$('#tl').value.trim(),em=$('#em').value.trim();
+  if(!selDay||!selTime){show('Alege mai întâi ziua și ora.',false);return}
+  if(nume.length<3||tel.replace(/\D/g,'').length<9){show('Completează numele și un număr de telefon valid.',false);return}
+  if(em&&!/^\S+@\S+\.\S+$/.test(em)){show('Adresa de e-mail nu pare corectă.',false);return}
+  const p={nume,telefon:tel,email:em,motiv:$('#mt2').value.trim(),data:selDay,ora:selTime,eticheta:labelOf(selDay,selTime)};
+  $('#send').disabled=true;show('Se trimite programarea…',true);
+  try{
+    if(CFG.scriptUrl){
+      const r=await fetch(CFG.scriptUrl,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p)});
+      const j=await r.json();
+      if(!j.ok){
+        if(j.error==='taken'){await loadBooked();selTime=null;renderCal();renderSlots();show('Intervalul tocmai a fost ocupat de altcineva. Alege alt interval.',false)}
+        else show('Programarea nu a putut fi trimisă. Încearcă din nou.',false);
+        $('#send').disabled=false;return;
+      }
+    }else{
+      const r=await fetch('https://formsubmit.co/ajax/'+CFG.doctorEmail,{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},
+        body:JSON.stringify({_subject:'Programare nouă – '+p.eticheta,_template:'table',Programare:p.eticheta,Nume:p.nume,Telefon:p.telefon,Email:p.email||'-',Motiv:p.motiv||'-'})});
+      const j=await r.json();
+      if(!(j.success===true||j.success==='true'))throw new Error('send');
+    }
+    booked.add(key(selDay,selTime));saveLocal();
+    $('#form').classList.add('hide');
+    const done=labelOf(selDay,selTime);selTime=null;renderCal();renderSlots();
+    show('Programarea ta pentru '+done+' a fost trimisă medicului. Vei fi contactat pentru confirmare.',true);
+    $('#nm').value=$('#tl').value=$('#em').value=$('#mt2').value='';
+  }catch(e){show('Programarea nu a putut fi trimisă. Verifică internetul și încearcă din nou.',false)}
+  $('#send').disabled=false;
+};
+
+(async()=>{await loadBooked();renderCal();renderSlots()})();
+</script>
+</body>
+</html>
